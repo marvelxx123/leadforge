@@ -517,8 +517,12 @@ class LeadForgeOrchestrator:
 
 
 def run_all_agents():
-    return LeadForgeOrchestrator().run()
-
+    orchestrator = LeadForgeOrchestrator()
+    orchestrator.alert.send_sms(
+        TWILIO_TO_NUMBER,
+        "LeadForge test - SMS is working! Your agent is live."
+    )
+    return orchestrator.run()
 
 if __name__ == "__main__":
     run_all_agents()
