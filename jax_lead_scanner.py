@@ -186,7 +186,7 @@ class BrainAgent:
         prompt = (
             "You are the AI brain of LeadForge - a garage door lead generation "
             "system in Jacksonville, Florida.\n\n"
-            "Analyze this signal. Determine if it is a real high quality "
+            "Analyze this signal and determine if it is a real high quality "
             "garage door lead worth acting on.\n\n"
             "SYSTEM MEMORY:\n"
             "- Total leads found so far: " + str(stats["total_leads"]) + "\n"
@@ -276,43 +276,41 @@ class ScoutAgent:
         }
 
     def scan_permits(self):
-        log.info("Scout: Scanning Duval County permits...")
+        log.info("Scout: Scanning Jacksonville permits...")
         signals = []
         try:
-            url = "https://data.coj.net/resource/permits.json"
+            url = "https://jaxepics.coj.net/api/permits"
             params = {
-                "$limit": 50,
-                "$order": "issued_date DESC",
-                "$q": "garage door",
+                "limit": 50,
+                "type": "residential",
+                "keyword": "garage",
             }
             resp = requests.get(url, params=params, headers=self.headers, timeout=15)
             if resp.status_code == 200:
                 permits = resp.json()
-                log.info("Permits API returned " + str(len(permits)) + " records")
+                log.info("Permits returned " + str(len(permits)) + " records")
                 for permit in permits:
-                    address = permit.get("site_address") or permit.get("address") or "Jacksonville FL"
+                    address = permit.get("address") or "Jacksonville FL"
                     permit_no = str(permit.get("permit_number") or permit.get("id") or "unknown")
                     signal_id = make_id("permit", permit_no)
                     if self.memory.has_seen(signal_id):
                         continue
                     raw_text = (
-                        "Duval County Permit - Jacksonville FL\n"
+                        "Jacksonville Permit\n"
                         "Permit: " + permit_no + "\n"
                         "Address: " + address + "\n"
-                        "Work: " + str(permit.get("description") or permit.get("work_description", "")) + "\n"
-                        "Date: " + str(permit.get("issued_date", "recent")) + "\n"
-                        "Contractor: " + str(permit.get("contractor_name", "unknown")) + "\n"
-                        "Value: " + str(permit.get("job_value", "unknown"))
+                        "Work: " + str(permit.get("description", "")) + "\n"
+                        "Date: " + str(permit.get("date", "recent"))
                     )
                     signals.append(Signal(
-                        source="duval_permit",
+                        source="jax_permit",
                         raw_text=raw_text,
-                        url="https://data.coj.net/permits/" + permit_no,
+                        url="https://jaxepics.coj.net",
                         signal_id=signal_id,
                         scraped_at=now(),
                     ))
             else:
-                log.warning("Permits API returned " + str(resp.status_code))
+                log.warning("Permits returned " + str(resp.status_code))
         except Exception as e:
             log.warning("Permits error: " + str(e))
         log.info("Permits: " + str(len(signals)) + " new signals")
@@ -322,8 +320,8 @@ class ScoutAgent:
         log.info("Scout: Local news...")
         signals = []
         feeds = [
-            "https://www.news4jax.com/rss",
-            "https://www.firstcoastnews.com/feeds/syndication/news",
+            "https://rss.app/feeds/Jacksonville+storm+damage.xml",
+            "https://news.google.com/rss/search?q=Jacksonville+Florida+storm+damage&hl=en-US&gl=US&ceid=US:en",
         ]
         keywords = ["storm", "hurricane", "wind damage", "tornado", "severe weather", "tropical", "damage"]
         for feed_url in feeds:
@@ -520,10 +518,10 @@ def run_all_agents():
     orchestrator = LeadForgeOrchestrator()
     orchestrator.alert.send_sms(
         TWILIO_TO_NUMBER,
-        "LeadForge test - SMS is working! Your agent is live."
+        "LeadForge test - SMS is working! Your agent is live in Jacksonville."
     )
     return orchestrator.run()
 
+
 if __name__ == "__main__":
     run_all_agents()
-
